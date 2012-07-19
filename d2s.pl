@@ -3,7 +3,7 @@
 # d2spl script for Dzen2 (Perl version)
 # Author: Holden Cox, 2011-2012
 # E-mail: segrived@gmail.com
-# Version 2.00 Beta 12
+# Version 2.00 Beta 13
 
 #== CONFIG ==============
 package config;
@@ -37,9 +37,9 @@ sub get {
 
 #== MAIN ================
 package main;
-use IO::Handle;
 use strict;
 use warnings;
+use IO::Handle;
 use Cwd;
 
 config::load(
@@ -80,7 +80,8 @@ foreach my $mod (@enabled_modules) {
     }
 }
 
-my ($counter, %mod_data, %d2c) = (0, (), ());
+# Инициализация необходимых переменных
+my ($counter, %mod_data, %generated_content, %d2c) = (0, (), (), ());
 
 # Настройки Dzen2
 $d2c{"bin"} = config::get("dzen2.path", "/usr/bin/dzen2");
@@ -94,62 +95,52 @@ my $command = sprintf("%s -ta %s -fn %s -bg '%s' -e \"%s\" -w %d",
     $d2c{bin}, $d2c{position}, $d2c{font}, $d2c{background}, $d2c{events}, $d2c{width}
 );
 
-open(DZEN2, "|-", "$command");
-DZEN2->autoflush(1);
+open(DZEN2, "|-", $command);
+DZEN2->autoflush(1); # Небуферизированный вывод
+
+foreach my $mod (@enabled_modules) {
+    # Интервал между обновлениями значения
+    $mod_data{$mod}{"updint"} = parse_time(config::get("mod.$mod.upd", 1));
+    
+    # Надпись или иконка
+    my ($lp, $lc, $lblpart) = (config::get("ui.label_padding"), config::get("colors.label"), "");
+    if (config::get("ui.use_icons")) {
+        my ($icon, $path) = (config::get("mod.$mod.icon", 0), config::get("main.icons_path"));
+        $lblpart = ($icon) ? "^i(${path}/${icon})" : "";
+    } else {
+        my $label = config::get("mod.$mod.label", 0);
+        $lblpart = ($label) ? "$label:" : "";
+    }
+    $mod_data{$mod}{"label"} = "^fg($lc)" . $lblpart . "^p($lp)";
+    
+    # Цвет иконки или надписи
+    $mod_data{$mod}{"color"} = config::get("mod.$mod.color", config::get("colors.default"));
+    
+    # Расстояние между индикаторами
+    $mod_data{$mod}{"padding"} = config::get("mod.$mod.padding", config::get("ui.padding", 20)); 
+}
 
 # Основной цикл
 while(1) {
-    my $output = "";
+    my ($output, $mod_content) = ("", "");
     foreach my $module (@enabled_modules) {
-        # Интервал между обновлениями значения
-        unless(defined $mod_data{"$module"}{updint}) {
-            $mod_data{"$module"}{updint} = parse_time(config::get("mod.$module.upd", 1));
-        }
-        
-        # Надпись или иконка
-        unless(defined $mod_data{"$module"}{label}) {
-            my $label_padding = config::get("ui.label_padding");
-            my $label_color = config::get("colors.label");
-            if (config::get("ui.use_icons")) {
-                my $icon = config::get("mod.$module.icon", 0);
-                my $icons_path = config::get("main.icons_path");
-                $mod_data{"$module"}{"label"} = ($icon)
-                    ? "^fg(${label_color})^i(${icons_path}/${icon})^p(${label_padding})" : "";
-            } else {
-                my $label = config::get("mod.$module.label");
-                $mod_data{"$module"}{"label"} = ($label)
-                    ? "^fg(${label_color})$label:^p(${label_padding})" : "";
-            }
-        }
-        
-        # Цвет иконки или надписи
-        unless(defined $mod_data{"$module"}{color}) {
-            my $color = config::get("mod.$module.color", config::get("colors.default"));
-            $mod_data{"$module"}{"color"} = $color;
-        }
-        
-        # Расстояние между индикаторами
-        unless(defined $mod_data{"$module"}{rpadding}) {
-            my $padding = config::get("mod.$module.rpadding", config::get("ui.padding", 20));
-            $mod_data{"$module"}{"rpadding"} = $padding;
-        }
-        
         # Обновление значение индикатора в случае надобности
-        my($updint, $isupd) = ($mod_data{"$module"}{"updint"}, $mod_data{"$module"}{"is_updated"});
-        if (($updint && !($counter % $updint)) || (!$updint && !$isupd)) {
+        my($upd_int, $is_upd) = ($mod_data{"$module"}{"updint"}, $mod_data{"$module"}{"is_updated"});
+        if (($upd_int && !($counter % $upd_int)) || (!$upd_int && !$is_upd)) {
             $mod_data{"$module"}{"data"} = &{\&{"d2sf_get_$module"}}();
             $mod_data{"$module"}{"is_updated"} = 1;
+            # Генерация строки с контентом
+            $mod_content = "$mod_data{$module}{label}";
+            $mod_content .= "^fg($mod_data{$module}{color})";
+            $mod_content .= "$mod_data{$module}{data}";
+            $mod_content .= "^p($mod_data{$module}{padding})";
+            $generated_content{$module} = $mod_content;
         }
-
         # Вывод результата
-        $output .= "$mod_data{$module}{label}";        # Надпись или иконка
-        $output .= "^fg($mod_data{$module}{color})";   # Цвет контента
-        $output .= "$mod_data{$module}{data}";         # Контент
-        $output .= "^p($mod_data{$module}{rpadding})"; # Отступ
+        $output .= $generated_content{$module};
     }
-    print DZEN2 "$output\n";
-    $counter++;
-    sleep 1;
+    print DZEN2 "$output\n"; undef $output;
+    $counter++; sleep 1;
 }
 
 1;
