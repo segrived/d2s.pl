@@ -35,6 +35,7 @@ sub d2sf_get_imap {
     my (%conf, $client, $result) = ((), "", "");
     $conf{'Server'} = $$imap_server;
     if($imap_use_ssl) {
+        require IO::Socket::SSL;
         %prm = ('PeerAddr' => $imap_server, 'PeerPort' => $imap_port, 'Timeout'  => 2);
         $conf{'Socket'} = IO::Socket::SSL->new(%prm);
     }
