@@ -56,10 +56,8 @@ sub ct {
 sub parse_time {
     my %scale_mul = ('m' => 60, 'h' => 3600);
     shift =~ m/^(?<t>\d+)\s*(?<s>\S*)$/;
-    my $scale = substr($+{"s"}, 0, 1) if defined($+{"s"});
-    my $time = (int $+{"t"});
-    $time *= $scale_mul{$scale} //= 1;
-    return $time;
+    my $scale = chr ord $+{"s"} if defined $+{"s"};
+    return int $+{"t"} * ($scale_mul{$scale} //= 1);
 }
 
 
