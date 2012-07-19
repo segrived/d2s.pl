@@ -17,7 +17,7 @@ my $na_text = config::get("main.na_text");
 my $cdsb = config::get("colors.disabled");
 
 sub d2sf_get_weather {
-    my $ua = LWP::UserAgent->new;
+    my $ua = LWP::UserAgent->new(timeout => 3);
     my $cont = $ua->get("http://www.google.com/ig/api?weather=${city}")->decoded_content;
     $cont =~ m/<current_conditions>.*<temp_$scale data="(?<t>\d+)"\/>.*<\/current_conditions>/;
     return $+{"t"} . ct($cdsb, (defined $+{"t"}) ? "°" : $na_text);
