@@ -10,7 +10,7 @@ my $dev = config::get("mod.brightness.dev", "acpi_video0");
 
 sub d2sf_get_brightness {
     open F, "< /sys/class/backlight/$dev/brightness";
-    chomp(my $brightness =<F>);
+    chomp(my $brightness = <F>);
     return $brightness;
 }
 

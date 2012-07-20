@@ -8,8 +8,9 @@
 
 use POSIX qw(strftime);
 
+my $format = config::get("mod.date.format", "%Y-%m-%d");
+
 sub d2sf_get_date {
-    my $format = config::get("mod.date.format", "%Y-%m-%d");
     return POSIX::strftime($format, localtime);
 }
 

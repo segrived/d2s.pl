@@ -5,54 +5,74 @@
 # E-mail: segrived@gmail.com
 # Version 2.00 Beta 13
 
-#== CONFIG ==============
+
+#====================================#
+#============== CONFIG ==============#
+#====================================#
 package config;
 
 # Хэш с конфигурацией
-my %conf = ();
+my %configs = ();
 
-# Парсер файла конфигурации
-sub load {
-    foreach (@_) {
-        next unless (-e $_);
-        open(CFGFILE, "<", $_);
-        chomp(my @lines = <CFGFILE>);
-        close(CFGFILE);
-        foreach (@lines) {
-            if ($_ =~ m/(?<key>[0-9a-z._]+):(?:[\s]*)(?<value>[\S\s]+$)/) {
-                $conf{$+{"key"}} = $+{"value"};
-            }
-        }
+# Регулярное выражение парсинга конфига
+my $conf_re = qr {
+    (?<k>[0-9a-z._]+) # Ключ
+    (?:[\s]*\:[\s]*)  # Разделитель
+    (?<v>[\S\s]+$)    # Значение
+}osx;
+
+# Поочерёдно загружает настройки из файлов, переданных параметром
+sub load_files {
+    (-e $_) ? load_file($_) : next foreach (@_);
+}
+
+# Загружет настройки из файла, переданного параметром
+sub load_file {
+    open my $cfgfile, '<', $_[0];
+    chomp(my @lines = <$cfgfile>);
+    foreach $config_line (@lines) {
+        set($+{k}, $+{v}) if ($config_line =~ $conf_re);
     }
+    close($cfgfile);
 }
 
+# Устанавливает значение параметра конфигурации
 sub set {
-    $conf{"$_[0]"} = $+{"$_[1]"};
+    $configs{$_[0]} = $_[1];
 }
 
+# Возвращает значение параметра конфигурации
 sub get {
-    return (defined $conf{"$_[0]"}) ? $conf{"$_[0]"} : "$_[1]";
+    return $configs{$_[0]} //= $_[1];
 }
 
 
-#== MAIN ================
+
+#====================================#
+#=============== MAIN ===============#
+#====================================#
 package main;
+
 use strict;
 use warnings;
 use IO::Handle;
 use Cwd;
 
-config::load(
+
+# Загрузка файлов конфигурации
+config::load_files(
     "/etc/d2spl/main.conf",
     "$ENV{'HOME'}/.config/d2spl/main.conf"
 );
 
+# Выводит текст заданным цветом
 sub ct {
     my ($color, $text) = (shift, shift);
     my $cdef = config::get("colors.default");
     return "^fg($color)$text^fg($cdef)";
 }
 
+# Парсит строку со временем в секунды
 sub parse_time {
     my %scale_mul = ('m' => 60, 'h' => 3600);
     shift =~ m/^(?<t>\d+)\s*(?<s>\S*)$/;
@@ -67,6 +87,7 @@ sleep parse_time(config::get("main.start_delay", 0));
 # Список включённых модулей
 my @enabled_modules = split(/\s+/, config::get("main.enabled"));
 
+# Директории, где будет выполняться поиск модулей
 my @mod_pathes = (
     getcwd . "/modules",
     "/usr/share/d2spl/modules",
@@ -123,21 +144,22 @@ foreach my $mod (@enabled_modules) {
 # Основной цикл
 while(1) {
     my ($output, $mod_content) = ("", "");
-    foreach my $module (@enabled_modules) {
+    foreach my $mod (@enabled_modules) {
         # Обновление значение индикатора в случае надобности
-        my($upd_int, $is_upd) = ($mod_data{"$module"}{"updint"}, $mod_data{"$module"}{"is_updated"});
+        my($upd_int, $is_upd) = ($mod_data{$mod}{"updint"}, $mod_data{$mod}{"is_updated"});
         if (($upd_int && !($counter % $upd_int)) || (!$upd_int && !$is_upd)) {
-            $mod_data{"$module"}{"data"} = &{\&{"d2sf_get_$module"}}();
-            $mod_data{"$module"}{"is_updated"} = 1;
+            # Обновление индикатора
+            $mod_data{"$mod"}{"data"} = &{\&{"d2sf_get_$mod"}}();
+            $mod_data{"$mod"}{"is_updated"} = 1;
             # Генерация строки с контентом
-            $mod_content = "$mod_data{$module}{label}";
-            $mod_content .= "^fg($mod_data{$module}{color})";
-            $mod_content .= "$mod_data{$module}{data}";
-            $mod_content .= "^p($mod_data{$module}{padding})";
-            $generated_content{$module} = $mod_content;
+            $mod_content = "$mod_data{$mod}{label}";
+            $mod_content .= "^fg($mod_data{$mod}{color})";
+            $mod_content .= "$mod_data{$mod}{data}";
+            $mod_content .= "^p($mod_data{$mod}{padding})";
+            $generated_content{$mod} = $mod_content;
         }
         # Вывод результата
-        $output .= $generated_content{$module};
+        $output .= $generated_content{$mod};
     }
     print DZEN2 "$output\n"; undef $output;
     $counter++; sleep 1;
