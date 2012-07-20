@@ -3,7 +3,7 @@
 # d2spl script for Dzen2 (Perl version)
 # Author: Holden Cox, 2011-2012
 # E-mail: segrived@gmail.com
-# Version 2.00 Beta 14
+# Version 2.00 Beta 15
 
 
 #====================================#

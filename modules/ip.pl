@@ -1,16 +1,20 @@
 # Модуль возвращает текущий внутрисетевой IP-адрес
-# Версия 0.1
+# Версия 0.2
 # Автор: segrived, 2012
-# Требуемое ПО: ip
+# Требуемое ПО: ip или ifconfig
 
 # Специфичные настройки модуля:
 #   interface - Сетевой интерфейс.
 #   |--- По умолчанию: eth0
+#   use_ifconfig - Использовать ifconfig вместо ip для получения IP-адреса
+#   |--- По умолчанию: false
 
-my $interface = config::get("mod.ip.interface", "eth0");
+my $iface = config::get("mod.ip.interface", "eth0");
+my $useifc = config::get("mod.ip.use_ifconfig", 0);
 
 sub d2sf_get_ip {
-    my $out = `ip addr list $interface`;
-    $out =~ m/inet\s+(?<ip>[\d.]+)\//;
-    return $+{"ip"}
+    $out = ($useifc) ? `ifconfig $iface` : `ip addr list $iface`;
+    return $+{"ip"} if $out =~ m/inet\s+(?<ip>[\d.]+)/;
 }
+
+1;

@@ -1,7 +1,7 @@
 # Модуль возвращает активную раскладку клавиатуры
 # Версия 0.2
 # Автор: segrived, 2012
-# Требуемое ПО: xkb-switch
+# Требуемое ПО: xkb-switch или skb
 
 sub d2sf_get_layout {
     my $result;
