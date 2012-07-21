@@ -1,0 +1,7 @@
+* Добавить функцию get_c в пакет config, которая будет возвращать цвет. Основные возможности:
+    - При указании default, disabled, label возвращать эти цвета из категроии настроек main
+    - Если вместо цвета указан default, disabled или label, возвращать цвет из категории main.
+      Например mod.mail.newmsg_text = disabled будет фактически означать
+      mod.mail.newmsg_text = get_color(main.disabled)
+      
+* Добавить модуль, отборажающий свободное место на HDD

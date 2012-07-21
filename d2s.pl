@@ -57,7 +57,7 @@ use strict;
 use warnings;
 use IO::Handle;
 use Cwd;
-
+use Data::Dumper;
 
 # Загрузка файлов конфигурации
 config::load_files(
@@ -104,46 +104,40 @@ foreach my $mod (@enabled_modules) {
 # Инициализация необходимых переменных
 my ($counter, %mod_data, %generated_content, %d2c) = (0, (), (), ());
 
-# Настройки Dzen2
-$d2c{"bin"} = config::get("dzen2.path", "/usr/bin/dzen2");
-$d2c{"position"} = substr(config::get("dzen2.position", "right"), 0, 1);
-$d2c{"font"} = config::get("dzen2.font", "fixed");
-$d2c{"background"} = config::get("dzen2.background", "#000000");
-$d2c{"events"} = config::get("dzen2.events", "");
-$d2c{"width"} = config::get("dzen2.width", 0);
-
+# Команда для запуска Dzen2 с параметрами
 my $command = sprintf("%s -ta %s -fn %s -bg '%s' -e \"%s\" -w %d",
-    $d2c{bin}, $d2c{position}, $d2c{font}, $d2c{background}, $d2c{events}, $d2c{width}
+    config::get("dzen2.path", "/usr/bin/dzen2"), # Путь к  бинарнику
+    chr ord config::get('dzen2.position', 'r'),  # Положение вывода
+    config::get('dzen2.font', "fixed"),          # Шрифт
+    config::get('dzen2.background', "#000000"),  # Цвет фона панели
+    config::get('dzen2.events', ""),             # Действия Dzen2
+    config::get('dzen2.width', 0)                # Ширина панели
 );
 
-open(DZEN2, "|-", $command);
-DZEN2->autoflush(1); # Небуферизированный вывод
+open(dzen2, "|-", $command);
+dzen2->autoflush(1);
 
 foreach my $mod (@enabled_modules) {
     # Интервал между обновлениями значения
     $mod_data{$mod}{"updint"} = parse_time(config::get("mod.$mod.upd", 1));
-    
     # Надпись или иконка
     my ($lp, $lc, $lblpart) = (config::get("ui.label_padding"), config::get("colors.label"), "");
     if (config::get("ui.use_icons")) {
         my ($icon, $path) = (config::get("mod.$mod.icon", 0), config::get("main.icons_path"));
         $lblpart = ($icon) ? "^i(${path}/${icon})" : "";
     } else {
-        my $label = config::get("mod.$mod.label", 0);
-        $lblpart = ($label) ? "$label:" : "";
+        $lblpart = (config::get("mod.$mod.label", 0)) ? "$label:" : "";
     }
     $mod_data{$mod}{"label"} = "^fg($lc)" . $lblpart . "^p($lp)";
-    
     # Цвет иконки или надписи
     $mod_data{$mod}{"color"} = config::get("mod.$mod.color", config::get("colors.default"));
-    
     # Расстояние между индикаторами
     $mod_data{$mod}{"padding"} = config::get("mod.$mod.padding", config::get("ui.padding", 20)); 
 }
 
 # Основной цикл
 while(1) {
-    my ($output, $mod_content) = ("", "");
+    my ($output, $mod_content) = "";
     foreach my $mod (@enabled_modules) {
         # Обновление значение индикатора в случае надобности
         my($upd_int, $is_upd) = ($mod_data{$mod}{"updint"}, $mod_data{$mod}{"is_updated"});
@@ -161,7 +155,7 @@ while(1) {
         # Вывод результата
         $output .= $generated_content{$mod};
     }
-    print DZEN2 "$output\n"; undef $output;
+    print dzen2 "$output\n"; undef $output;
     $counter++; sleep 1;
 }
 
