@@ -76,8 +76,8 @@ sub ct {
 sub parse_time {
     my %scale_mul = ('m' => 60, 'h' => 3600, 'd' => 86400);
     shift =~ m/^(?<t>\d+)\s*(?<s>\S*)$/;
-    my $scale = chr ord $+{"s"} if defined $+{"s"};
-    return int $+{"t"} * ($scale_mul{$scale} //= 1);
+    my $scale = chr ord $+{s} if defined $+{s};
+    return int $+{t} * ($scale_mul{$scale} //= 1);
 }
 
 
@@ -126,7 +126,8 @@ foreach my $mod (@enabled_modules) {
         my ($icon, $path) = (config::get("mod.$mod.icon", 0), config::get("main.icons_path"));
         $lblpart = ($icon) ? "^i(${path}/${icon})" : "";
     } else {
-        $lblpart = (config::get("mod.$mod.label", 0)) ? "$label:" : "";
+        my $label = config::get("mod.$mod.label", 0);
+        $lblpart = ($label) ? "$label:" : "";
     }
     $mod_data{$mod}{"label"} = "^fg($lc)" . $lblpart . "^p($lp)";
     # Цвет иконки или надписи
