@@ -74,7 +74,7 @@ sub ct {
 
 # Парсит строку со временем в секунды
 sub parse_time {
-    my %scale_mul = ('m' => 60, 'h' => 3600);
+    my %scale_mul = ('m' => 60, 'h' => 3600, 'd' => 86400);
     shift =~ m/^(?<t>\d+)\s*(?<s>\S*)$/;
     my $scale = chr ord $+{"s"} if defined $+{"s"};
     return int $+{"t"} * ($scale_mul{$scale} //= 1);
